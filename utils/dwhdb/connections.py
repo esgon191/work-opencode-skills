@@ -15,6 +15,7 @@ import sys
 
 import keyring
 import yaml
+import psycopg2
 
 
 def _root() -> pathlib.Path:
@@ -79,20 +80,28 @@ def password(alias: str | None = None) -> str:
     return pw
 
 
-def connect(alias: str | None = None):
+def connect(alias: str | None = None, retries = 0):
     """psycopg2-соединение с выбранным контуром."""
-    import psycopg2
 
     d = resolve(alias)
-    return psycopg2.connect(
-        host=d["host"],
-        port=d["port"],
-        dbname=d["dbname"],
-        user=d["user"],
-        password=password(alias),
-        sslmode=d.get("sslmode", "prefer"),
-        application_name=f"opencode/{d['alias']}",
-    )
+    # Иногда не получается подключиться по неизвестной ошибке (обычно первый раз в сессии
+    # для этого одна попытка реконнекта по этой конкретной причине
+    try: 
+        return psycopg2.connect(
+            host=d["host"],
+            port=d["port"],
+            dbname=d["dbname"],
+            user=d["user"],
+            password=password(alias),
+            sslmode=d.get("sslmode", "prefer"),
+            application_name=f"opencode/{d['alias']}",
+        )
+    except psycopg2.OperationalError as e:
+        if "LDAP auth failed: unknown error" in e.message and retries < 1:
+            return connect(alias, retries=1)
+
+        else:
+            raise 
 
 
 # --- CLI --------------------------------------------------------------------
