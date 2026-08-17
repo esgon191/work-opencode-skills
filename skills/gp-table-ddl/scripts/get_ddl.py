@@ -9,7 +9,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[3] / "utils"))
 
 import psycopg2  # noqa: E402
 
-from utils.dwhdb.connections import connect  # noqa: E402
+from dwhdb.connections import connect  # noqa: E402
 
 COLUMNS = """
 select a.attname,
