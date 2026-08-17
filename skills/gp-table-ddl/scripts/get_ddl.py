@@ -6,11 +6,11 @@ import pathlib
 import sys
 
 for _d in pathlib.Path(__file__).resolve().parents:
-    if (_d / "lib" / "dwhdb").is_dir():
-        sys.path.insert(0, str(_d / "lib"))
+    if (_d / "utils" / "dwhdb").is_dir():
+        sys.path.insert(0, str(_d / "utils"))
         break
 else:
-    sys.exit("не найден lib/dwhdb — скил должен лежать внутри репозитория скилов")
+    sys.exit("не найден utils/dwhdb — скил должен лежать внутри репозитория скилов")
 
 import psycopg2  # noqa: E402
 
