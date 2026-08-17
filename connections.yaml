@@ -2,13 +2,7 @@ default: gp_prod
 
 databases:
   gp_prod:
-    host: gp-master.corp.example
-    port: 5432
-    dbname: dwh
+    host: greenplum-prod.dwh.ecom.tech
+    port: 6432
+    dbname: gp_prod
     readonly: true
-
-  gp_dev:
-    host: gp-dev.corp.example
-    port: 5432
-    dbname: dwh_dev
-    readonly: false
