@@ -57,26 +57,6 @@ def main(relname: str, alias: str | None = None) -> None:
                 line += f"  -- {comment}"
             print(line)
 
-        # ключ дистрибуции (GP6+); на GP5 функции нет
-        try:
-            cur.execute("select pg_get_table_distributedby(%s::regclass);", (relname,))
-            print(f"\n{cur.fetchone()[0]}")
-        except psycopg2.Error:
-            conn.rollback()
-            print("\n-- distribution: не определена (проверь gp_distribution_policy)")
-
-        cur.execute(PARTITIONS, (relname,))
-        part = cur.fetchone()
-        print(
-            f"-- partitioned by {part[0]} on ({part[1]}), партиций: {part[2]}"
-            if part else "-- not partitioned"
-        )
-
-        cur.execute(INDEXES, (relname,))
-        for (definition,) in cur.fetchall():
-            print(f"-- {definition}")
-
-
 if __name__ == "__main__":
     if len(sys.argv) < 2:
         sys.exit(__doc__)
