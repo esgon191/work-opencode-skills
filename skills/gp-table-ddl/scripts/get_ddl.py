@@ -5,16 +5,11 @@
 import pathlib
 import sys
 
-for _d in pathlib.Path(__file__).resolve().parents:
-    if (_d / "utils" / "dwhdb").is_dir():
-        sys.path.insert(0, str(_d / "utils"))
-        break
-else:
-    sys.exit("не найден utils/dwhdb — скил должен лежать внутри репозитория скилов")
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[3] / "utils"))
 
 import psycopg2  # noqa: E402
 
-from dwhdb import connect  # noqa: E402
+from utils.dwhdb.connections import connect  # noqa: E402
 
 COLUMNS = """
 select a.attname,

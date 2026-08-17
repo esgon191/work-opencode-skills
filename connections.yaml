@@ -4,5 +4,5 @@ databases:
   gp_prod:
     host: greenplum-prod.dwh.ecom.tech
     port: 6432
-    dbname: gp_prod
+    dbname: gp_prd
     readonly: true
