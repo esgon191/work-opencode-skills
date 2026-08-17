@@ -1,0 +1,9 @@
+# Скопировать в connections.local.yaml и указать свой логин.
+# Пароли сюда НЕ пишем — они в keyring.
+
+user: your.login
+
+# Если на каком-то контуре логин отличается от общего:
+# databases:
+#   gp_dev:
+#     user: your.login_dev
