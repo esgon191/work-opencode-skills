@@ -97,7 +97,7 @@ def connect(alias: str | None = None, retries = 0):
             application_name=f"opencode/{d['alias']}",
         )
     except psycopg2.OperationalError as e:
-        if "LDAP auth failed: unknown error" in e.message and retries < 1:
+        if "LDAP auth failed: unknown error" in str(e) and retries < 1:
             return connect(alias, retries=1)
 
         else:
