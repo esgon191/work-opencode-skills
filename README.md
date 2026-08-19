@@ -25,11 +25,31 @@
 ```json
 {
   "$schema": "https://opencode.ai/config.json",
-  "skills": {"paths" : ["~/Desktop/work-opencode-skills/skills"] }
+  "skills" : {"paths": ["~/Documents/opencode/skills/work-opencode-skills/skills"]},
 }
 ```
 Обновление скилов = `git pull`.
 Проверка: перезапустить `opencode` и спросить, какие есть скилы.
+
+Что бы не давать разрешение при выполнении скиллов, можно включить их в permission (есть риски безопасности)
+```json
+  "permission": {
+      "external_directory": {
+          "~/Documents/opencode/skills/**": "allow"
+      },
+      "edit": {
+          "~/Documents/opencode/skills/**": "deny"
+      },
+      "read" : {
+          "*" : "ask",
+          "**.md" : "allow"
+      },
+      "bash": {
+          "*": "ask",
+          "python3 scripts/get_ddl.py *": "allow"
+      } 
+    }
+```
 
 ## Добавление скила
 
