@@ -8,6 +8,7 @@
 ├── utils/dwhdb/                       общий модуль подключения к БД
 └── skills/
     ├── gp-table-ddl/                получение схемы и DDL таблиц Greenplum
+    ├── gp-test-query/               тест запроса (не работает для DDL / DML), выводит результат ANALYZE
 ```
 
 ## Подключение к OpenCode V1
