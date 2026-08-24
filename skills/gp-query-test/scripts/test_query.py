@@ -35,8 +35,8 @@ def main(path: str, alias: str | None = None, run: bool = False) -> None:
     conn.set_session(readonly=True, autocommit=False)
     try:
         with conn.cursor() as cur:
-            cur.execute("set local statement_timeout = '30s'")
-            cur.execute("set local lock_timeout = '5s'")
+            cur.execute("set local statement_timeout = '300s'")
+            cur.execute("set local lock_timeout = '15s'")
 
             cur.execute(f"explain {sql}")
             plan = [r[0] for r in cur.fetchall()]
