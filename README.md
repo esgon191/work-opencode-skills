@@ -47,7 +47,8 @@
       },
       "bash": {
           "*": "ask",
-          "python3 scripts/get_ddl.py *": "allow"
+          "python3 scripts/get_ddl.py *": "allow",
+          "python3 scripts/test_query.py *": "allow"
       } 
     }
 ```
