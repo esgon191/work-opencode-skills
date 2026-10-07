@@ -1,0 +1,21 @@
+[project]
+name = "dwh-mcp"
+version = "0.1.0"
+description = "Локальный MCP-сервер OpenCode для работы с DWH Greenplum"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "mcp>=1.2,<2",
+    "psycopg2-binary>=2.9",
+    "sqlparse>=0.5",
+    "keyring>=25",
+    "pyyaml>=6",
+]
+
+[project.scripts]
+dwh-mcp = "dwh_mcp.server:main"
+dwh-connections = "dwh_mcp.connections:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

@@ -5,11 +5,12 @@
 Пароль     -> системный keyring, на диск не пишется
 
 CLI:
-    python utils/dwhdb/connections.py                     список контуров
-    python utils/dwhdb/connections.py set-password gp_prod  сохранить пароль
-    python utils/dwhdb/connections.py check gp_prod         проверить соединение
+    dwh-connections                         список контуров
+    dwh-connections set-password gp_prod    сохранить пароль
+    dwh-connections check gp_prod           проверить соединение
 """
 import getpass
+import os
 import pathlib
 import sys
 
@@ -18,20 +19,24 @@ import yaml
 import psycopg2
 
 
+class DwhError(Exception):
+    """Понятная пользователю ошибка: сервер отдаёт её текст модели как есть."""
+
+
 def _root() -> pathlib.Path:
-    """Корень репозитория скилов — ближайший предок с connections.yaml."""
-    for d in pathlib.Path(__file__).resolve().parents:
+    """Каталог с connections.yaml: $DWH_MCP_CONFIG_DIR, корень репозитория
+    или ~/.config/opencode."""
+    env = os.environ.get("DWH_MCP_CONFIG_DIR")
+    candidates = [pathlib.Path(env).expanduser()] if env else []
+    candidates += list(pathlib.Path(__file__).resolve().parents)
+    candidates.append(pathlib.Path.home() / ".config" / "opencode")
+    for d in candidates:
         if (d / "connections.yaml").exists():
             return d
-    fallback = pathlib.Path.home() / ".config" / "opencode"
-    if (fallback / "connections.yaml").exists():
-        return fallback
-    sys.exit("connections.yaml не найден ни в репозитории, ни в ~/.config/opencode/")
-
-
-ROOT = _root()
-CFG = ROOT / "connections.yaml"
-LOCAL = ROOT / "connections.local.yaml"
+    raise DwhError(
+        "connections.yaml не найден ни в $DWH_MCP_CONFIG_DIR, ни в репозитории, "
+        "ни в ~/.config/opencode/"
+    )
 
 
 def _read(path: pathlib.Path) -> dict:
@@ -40,26 +45,34 @@ def _read(path: pathlib.Path) -> dict:
     return yaml.safe_load(path.read_text(encoding="utf-8")) or {}
 
 
+def _cfg() -> dict:
+    return _read(_root() / "connections.yaml")
+
+
+def _local() -> dict:
+    return _read(_root() / "connections.local.yaml")
+
+
 def targets() -> dict:
     """Все контуры из общего конфига."""
-    return _read(CFG).get("databases", {})
+    return _cfg().get("databases", {})
 
 
 def resolve(alias: str | None = None) -> dict:
     """Параметры подключения без пароля."""
-    base = _read(CFG)
-    local = _read(LOCAL)
+    base = _cfg()
+    local = _local()
     dbs = base.get("databases", {})
 
     alias = alias or base.get("default")
     if alias not in dbs:
-        sys.exit(f"неизвестный контур {alias!r}; доступны: {', '.join(dbs)}")
+        raise DwhError(f"неизвестный контур {alias!r}; доступны: {', '.join(dbs)}")
 
     user = local.get("databases", {}).get(alias, {}).get("user") or local.get("user")
     if not user:
-        sys.exit(
-            f"логин не задан. Скопируй {LOCAL.name}.example в {LOCAL.name} "
-            f"и укажи в нём user"
+        raise DwhError(
+            f"логин не задан. Скопируй connections.local.yaml.example в "
+            f"{_root() / 'connections.local.yaml'} и укажи в нём user"
         )
 
     return dict(dbs[alias]) | {
@@ -73,9 +86,10 @@ def password(alias: str | None = None) -> str:
     d = resolve(alias)
     pw = keyring.get_password(d["service"], d["user"])
     if not pw:
-        sys.exit(
-            f"пароля для {d['user']}@{d['alias']} нет в keyring. Выполни:\n"
-            f"    python utils/dwhdb/connections.py set-password {d['alias']}"
+        raise DwhError(
+            f"пароля для {d['user']}@{d['alias']} нет в keyring. Пользователь должен "
+            f"сам выполнить в терминале (команда интерактивная):\n"
+            f"    uv run --directory {_root()} dwh-connections set-password {d['alias']}"
         )
     return pw
 
@@ -86,7 +100,7 @@ def connect(alias: str | None = None, retries = 0):
     d = resolve(alias)
     # Иногда не получается подключиться по неизвестной ошибке (обычно первый раз в сессии
     # для этого одна попытка реконнекта по этой конкретной причине
-    try: 
+    try:
         return psycopg2.connect(
             host=d["host"],
             port=d["port"],
@@ -101,24 +115,27 @@ def connect(alias: str | None = None, retries = 0):
             return connect(alias, retries=1)
 
         else:
-            raise 
+            raise
 
 
-# --- CLI --------------------------------------------------------------------
-
-def _cmd_list() -> None:
-    local = _read(LOCAL)
-    default = _read(CFG).get("default")
+def describe() -> str:
+    """Список контуров: база, RO/RW, логин, наличие пароля."""
+    local = _local()
+    default = _cfg().get("default")
+    lines = []
     for name, d in targets().items():
         user = local.get("databases", {}).get(name, {}).get("user") or local.get("user")
         has_pw = bool(keyring.get_password(f"opencode/{name}", user)) if user else False
-        print(
+        lines.append(
             f"{name:<10} {d['dbname']:<10} {'RO' if d.get('readonly') else 'RW':<3}"
             f" {user or '— логин не задан':<16}"
             f" {'пароль: ok' if has_pw else 'пароль: нет':<12}"
             f"{' (default)' if name == default else ''}"
         )
+    return "\n".join(lines)
 
+
+# --- CLI --------------------------------------------------------------------
 
 def _cmd_set_password(alias: str | None) -> None:
     d = resolve(alias)
@@ -135,15 +152,22 @@ def _cmd_check(alias: str | None) -> None:
         print(f"ok: {user}@{d['host']}/{dbname}\n{ver.split(',')[0]}")
 
 
-if __name__ == "__main__":
+def main() -> None:
     args = sys.argv[1:]
     cmd = args[0] if args else "list"
     arg = args[1] if len(args) > 1 else None
-    if cmd == "set-password":
-        _cmd_set_password(arg)
-    elif cmd == "check":
-        _cmd_check(arg)
-    elif cmd == "list":
-        _cmd_list()
-    else:
-        sys.exit(f"неизвестная команда {cmd!r}: list | set-password | check")
+    try:
+        if cmd == "set-password":
+            _cmd_set_password(arg)
+        elif cmd == "check":
+            _cmd_check(arg)
+        elif cmd == "list":
+            print(describe())
+        else:
+            sys.exit(f"неизвестная команда {cmd!r}: list | set-password | check")
+    except DwhError as e:
+        sys.exit(str(e))
+
+
+if __name__ == "__main__":
+    main()
