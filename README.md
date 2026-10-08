@@ -19,7 +19,13 @@
 |------------------|------------|
 | `gp_connections` | список контуров, логин, сохранён ли пароль |
 | `gp_table_ddl`   | колонки таблицы: типы, not null, default, комментарии |
-| `gp_query_test`  | EXPLAIN запроса + предупреждения о motion; `run=true` — первые 20 строк в read-only транзакции. DML/DDL не принимает |
+| `gp_query_test`  | EXPLAIN запроса + предупреждения о motion, данные не читает. DML/DDL не принимает |
+| `gp_query_run`   | то же + первые 20 строк результата в read-only транзакции. **Требует подтверждения** (см. ниже) |
+
+> ⚠️ `gp_query_run` отдаёт данные из DWH в модель. **Запрашиваемые данные не должны
+> быть персональными** — ФИО, телефоны, email, адреса, паспортные и платёжные данные,
+> идентификаторы клиентов и сотрудников. Перед подтверждением вызова смотри на список
+> колонок в запросе и отклоняй, если там есть ПДн.
 
 ## Установка
 
@@ -46,17 +52,37 @@ uv run dwh-connections check gp_prod                       # проверка с
   "mcp": {
     "dwh": {
       "type": "local",
-      "command": ["uv", "run", "--directory", "<Путь к репозиторию>/work-opencode-skills", "dwh-mcp"],
+      "command": ["/Users/<you>/<Путь к репозиторию>/work-opencode-skills/.venv/bin/dwh-mcp"],
       "enabled": true
     }
+  },
+  "permission": {
+    "dwh_gp_query_run": "ask"
   }
 }
 ```
 
-В OpenCode инструменты видны как `dwh_gp_table_ddl`, `dwh_gp_query_test`, `dwh_gp_connections`.
+`"dwh_gp_query_run": "ask"` — opencode спрашивает подтверждение перед каждым
+выполнением запроса с выдачей данных; остальные инструменты dwh работают без
+вопросов. Не меняй на `allow`: подтверждение — место, где ты проверяешь, что в
+запросе нет персональных данных.
+
+Путь — только **абсолютный**: opencode запускает команду без shell, `~` и `$HOME`
+не раскрываются, и сервер падает с `MCP error -32000: Connection Closed`.
+Получить путь: `echo "$PWD/.venv/bin/dwh-mcp"` в корне репозитория (venv создаётся
+после первого `uv sync` / `uv run`).
+
+Вариант через uv (подтягивает зависимости сам после `git pull`), тоже с абсолютными путями —
+`uv` может отсутствовать в `PATH` процесса opencode:
+`["/Users/<you>/.local/bin/uv", "run", "--directory", "/Users/<you>/.../work-opencode-skills", "dwh-mcp"]`.
+
+Если сервер не поднимается — смотри логи opencode в `~/.local/share/opencode/log/`.
+
+В OpenCode инструменты видны как `dwh_gp_table_ddl`, `dwh_gp_query_test`,
+`dwh_gp_query_run`, `dwh_gp_connections`.
 Проверка: перезапустить `opencode` и спросить, какие есть инструменты dwh.
 
-Обновление = `git pull` (зависимости `uv` подтянет сам при следующем запуске).
+Обновление = `git pull` + `uv sync`.
 
 `connections.yaml` ищется по порядку: `$DWH_MCP_CONFIG_DIR`, корень репозитория,
 `~/.config/opencode/`. Каталог можно задать через `"environment": {"DWH_MCP_CONFIG_DIR": "..."}`
