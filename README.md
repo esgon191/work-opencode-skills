@@ -23,13 +23,18 @@
 
 ## Установка
 
-Нужен [uv](https://docs.astral.sh/uv/).
+Нужен [uv](https://docs.astral.sh/uv/) и ветка с `pyproject.toml`. `uv run` ищет
+проект в текущей папке — запускай из корня репозитория или указывай `--directory`,
+иначе будет `failed to spawn: dwh-connections`.
 
 ```bash
+cd <Путь к репозиторию>/work-opencode-skills
 cp connections.local.yaml.example connections.local.yaml   # указать user
 uv run dwh-connections set-password gp_prod                # пароль в keyring
 uv run dwh-connections check gp_prod                       # проверка соединения
 ```
+
+Из любой папки: `uv run --directory <Путь к репозиторию>/work-opencode-skills dwh-connections check gp_prod`.
 
 ## Подключение к OpenCode
 
