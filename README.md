@@ -19,6 +19,7 @@
 |------------------|------------|
 | `gp_connections` | список контуров, логин, сохранён ли пароль |
 | `gp_table_ddl`   | колонки таблицы: типы, not null, default, комментарии |
+| `gp_schema_tables` | таблицы и представления схемы без дочерних партиций; с `name` — только похожие имена. Для исправления опечаток, когда таблица не найдена |
 | `gp_query_test`  | EXPLAIN запроса + предупреждения о motion, данные не читает. DML/DDL не принимает |
 | `gp_query_run`   | то же + первые 20 строк результата в read-only транзакции. **Требует подтверждения** (см. ниже) |
 
@@ -78,8 +79,8 @@ uv run dwh-connections check gp_prod                       # проверка с
 
 Если сервер не поднимается — смотри логи opencode в `~/.local/share/opencode/log/`.
 
-В OpenCode инструменты видны как `dwh_gp_table_ddl`, `dwh_gp_query_test`,
-`dwh_gp_query_run`, `dwh_gp_connections`.
+В OpenCode инструменты видны как `dwh_gp_table_ddl`, `dwh_gp_schema_tables`,
+`dwh_gp_query_test`, `dwh_gp_query_run`, `dwh_gp_connections`.
 Проверка: перезапустить `opencode` и спросить, какие есть инструменты dwh.
 
 Обновление = `git pull` + `uv sync`.

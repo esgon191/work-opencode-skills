@@ -3,13 +3,14 @@ import anyio
 from mcp.server.fastmcp import FastMCP
 from mcp.server.fastmcp.exceptions import ToolError
 
-from . import connections, ddl, query
+from . import connections, ddl, query, tables
 
 INSTRUCTIONS = """\
 Инструменты для работы с DWH Greenplum.
 
 - Схему таблиц не угадывай: перед написанием запроса к таблице, структура
   которой не подтверждена в этой сессии, вызови gp_table_ddl.
+- Таблица не найдена — проверь имя на опечатку через gp_schema_tables.
 - Нетривиальный запрос перед выдачей пользователю проверь через gp_query_test.
 - gp_query_run возвращает данные — только по явной просьбе пользователя и
   никогда для персональных данных (ФИО, контакты, документы, id клиентов).
@@ -54,6 +55,28 @@ async def gp_table_ddl(table: str, alias: str | None = None) -> str:
     Вывод показывай пользователю компактно, не вставляй полотно в чат.
     """
     return await _call(ddl.get_ddl, table, alias)
+
+
+@mcp.tool()
+async def gp_schema_tables(schema: str, name: str | None = None, alias: str | None = None) -> str:
+    """Список таблиц и представлений схемы Greenplum (без дочерних партиций
+    *_N_prt_*).
+
+    Использовать, когда таблицу не удалось найти в схеме (gp_table_ddl или
+    gp_query_test вернули «не найдена» / «does not exist»), чтобы исправить
+    возможную опечатку в имени. Передай name — получишь только похожие имена.
+    Если не найдена сама схема — в ошибке будут похожие схемы.
+
+    Найденное исправление не применяй молча: назови пользователю, какое имя
+    было и какое ты взял, а при нескольких похожих вариантах — спроси.
+
+    Args:
+        schema: имя схемы.
+        name: имя таблицы с возможной опечаткой (можно с префиксом схемы);
+            без него — полный список схемы.
+        alias: контур из connections.yaml; по умолчанию — default.
+    """
+    return await _call(tables.schema_tables, schema, name, alias)
 
 
 @mcp.tool()

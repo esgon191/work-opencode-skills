@@ -1,4 +1,7 @@
 """Схема таблицы Greenplum: колонки, типы, not null, default, комментарии."""
+import psycopg2
+import psycopg2.errors
+
 from .connections import DwhError, connect
 
 COLUMNS = """
@@ -17,11 +20,18 @@ order by a.attnum;
 
 
 def get_ddl(relname: str, alias: str | None = None) -> str:
+    not_found = DwhError(
+        f"таблица {relname} не найдена — возможна опечатка, "
+        f"проверь имя через gp_schema_tables"
+    )
     with connect(alias) as conn, conn.cursor() as cur:
-        cur.execute(COLUMNS, (relname,))
+        try:
+            cur.execute(COLUMNS, (relname,))
+        except (psycopg2.errors.UndefinedTable, psycopg2.errors.InvalidSchemaName) as e:
+            raise not_found from e
         rows = cur.fetchall()
         if not rows:
-            raise DwhError(f"таблица {relname} не найдена")
+            raise not_found
 
         out = [f"-- {relname}"]
         for name, typ, notnull, default, comment in rows:

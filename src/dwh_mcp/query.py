@@ -54,6 +54,8 @@ def test_query(sql: str, alias: str | None = None, run: bool = False) -> str:
         msg = f"-- ОШИБКА {e.pgcode}: {e.diag.message_primary or e}"
         if e.diag.message_hint:
             msg += f"\n-- подсказка: {e.diag.message_hint}"
+        if e.pgcode in ("42P01", "3F000"):  # undefined_table, invalid_schema_name
+            msg += "\n-- возможна опечатка в имени: проверь через gp_schema_tables"
         raise DwhError(msg) from e
     finally:
         conn.rollback()
