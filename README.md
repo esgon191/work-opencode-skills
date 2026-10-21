@@ -56,7 +56,7 @@ uv run dwh-connections check ch_prod
 
 ## Подключение к OpenCode
 
-В `~/.config/opencode/opencode.json`:
+В директории конфига, поумолчанию `~/.config/opencode/opencode.json`:
 
 ```json
 {
