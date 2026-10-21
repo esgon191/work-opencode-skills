@@ -24,7 +24,7 @@ def get_ddl(relname: str, alias: str | None = None) -> str:
         f"таблица {relname} не найдена — возможна опечатка, "
         f"проверь имя через gp_schema_tables"
     )
-    with connect(alias) as conn, conn.cursor() as cur:
+    with connect(alias, "greenplum") as conn, conn.cursor() as cur:
         try:
             cur.execute(COLUMNS, (relname,))
         except (psycopg2.errors.UndefinedTable, psycopg2.errors.InvalidSchemaName) as e:

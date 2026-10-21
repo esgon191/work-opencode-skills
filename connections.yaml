@@ -6,3 +6,9 @@ databases:
     port: 6432
     dbname: gp_prd
     readonly: true
+  ch_prod:
+    kind: clickhouse
+    host: os-002033006.srvr.smkt.corp
+    port: 8123
+    dbname: default
+    readonly: true

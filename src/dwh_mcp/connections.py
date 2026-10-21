@@ -58,12 +58,19 @@ def targets() -> dict:
     return _cfg().get("databases", {})
 
 
-def resolve(alias: str | None = None) -> dict:
-    """Параметры подключения без пароля."""
+def resolve(alias: str | None = None, kind: str | None = None) -> dict:
+    """Параметры подключения без пароля. Без alias — первый контур нужного
+    kind (или глобальный default)."""
     base = _cfg()
     local = _local()
     dbs = base.get("databases", {})
 
+    if alias is None and kind is not None:
+        alias = next(
+            (n for n, d in dbs.items() if d.get("kind", "greenplum") == kind), None
+        )
+        if alias is None:
+            raise DwhError(f"в connections.yaml нет контура типа {kind}")
     alias = alias or base.get("default")
     if alias not in dbs:
         raise DwhError(f"неизвестный контур {alias!r}; доступны: {', '.join(dbs)}")
@@ -75,10 +82,15 @@ def resolve(alias: str | None = None) -> dict:
             f"{_root() / 'connections.local.yaml'} и укажи в нём user"
         )
 
-    return dict(dbs[alias]) | {
+    cfg = dict(dbs[alias])
+    k = cfg.get("kind", "greenplum")
+    if kind is not None and k != kind:
+        raise DwhError(f"контур {alias!r} — {k}, а не {kind}")
+    return cfg | {
         "alias": alias,
         "user": user,
         "service": f"opencode/{alias}",
+        "kind": k,
     }
 
 
@@ -94,10 +106,13 @@ def password(alias: str | None = None) -> str:
     return pw
 
 
-def connect(alias: str | None = None, retries = 0):
-    """psycopg2-соединение с выбранным контуром."""
+def connect(alias: str | None = None, kind: str | None = None, retries: int = 0):
+    """Соединение с контуром: psycopg2 (greenplum) или clickhouse_connect."""
 
-    d = resolve(alias)
+    d = resolve(alias, kind)
+    if d["kind"] == "clickhouse":
+        return _connect_ch(d)
+
     # Иногда не получается подключиться по неизвестной ошибке (обычно первый раз в сессии
     # для этого одна попытка реконнекта по этой конкретной причине
     try:
@@ -112,18 +127,34 @@ def connect(alias: str | None = None, retries = 0):
         )
     except psycopg2.OperationalError as e:
         if "LDAP auth failed: unknown error" in str(e) and retries < 1:
-            return connect(alias, retries=1)
+            return connect(alias, kind, retries=1)
 
         else:
             raise
 
 
-def describe() -> str:
-    """Список контуров: база, RO/RW, логин, наличие пароля."""
+def _connect_ch(d: dict):
+    """Клиент clickhouse_connect для контура ClickHouse."""
+    import clickhouse_connect
+
+    return clickhouse_connect.get_client(
+        host=d["host"],
+        port=d["port"],
+        username=d["user"],
+        password=password(d["alias"]),
+        database=d.get("dbname", "default"),
+        send_receive_timeout=300,
+    )
+
+
+def describe(kind: str | None = None) -> str:
+    """Список контуров (с фильтром по kind): база, RO/RW, логин, наличие пароля."""
     local = _local()
     default = _cfg().get("default")
     lines = []
     for name, d in targets().items():
+        if kind and d.get("kind", "greenplum") != kind:
+            continue
         user = local.get("databases", {}).get(name, {}).get("user") or local.get("user")
         has_pw = bool(keyring.get_password(f"opencode/{name}", user)) if user else False
         lines.append(
@@ -146,6 +177,16 @@ def _cmd_set_password(alias: str | None) -> None:
 
 def _cmd_check(alias: str | None) -> None:
     d = resolve(alias)
+    if d["kind"] == "clickhouse":
+        client = connect(alias)
+        try:
+            user, dbname, ver = client.query(
+                "select currentUser(), currentDatabase(), version()"
+            ).result_rows[0]
+        finally:
+            client.close()
+        print(f"ok: {user}@{d['host']}/{dbname}\nClickHouse {ver}")
+        return
     with connect(alias) as conn, conn.cursor() as cur:
         cur.execute("select current_user, current_database(), version()")
         user, dbname, ver = cur.fetchone()

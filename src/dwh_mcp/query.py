@@ -27,7 +27,7 @@ def test_query(sql: str, alias: str | None = None, run: bool = False) -> str:
     precheck(sql)
 
     out = []
-    conn = connect(alias)
+    conn = connect(alias, "greenplum")
     conn.set_session(readonly=True, autocommit=False)
     try:
         with conn.cursor() as cur:

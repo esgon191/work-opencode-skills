@@ -24,7 +24,7 @@ where nspname !~ '^(pg_|gp_toolkit$|information_schema$)';
 
 def schema_tables(schema: str, name: str | None = None, alias: str | None = None) -> str:
     schema = schema.strip().lower()
-    with connect(alias) as conn, conn.cursor() as cur:
+    with connect(alias, "greenplum") as conn, conn.cursor() as cur:
         cur.execute(TABLES, (schema,))
         rows = cur.fetchall()
         if not rows:
