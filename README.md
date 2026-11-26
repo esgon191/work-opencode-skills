@@ -113,10 +113,10 @@ uv run dwh-connections check ch_prod
 
 RAG с примерами кода подключается в `work-opencode-config` как удалённый MCP-сервер
 `rag-code-oper-smkt` через LiteLLM; локальный сервер из этого репозитория для него
-не нужен. Перед запуском OpenCode задай `LITELLM_API_KEY`:
+не нужен. Перед запуском OpenCode задай `RAG_OPERSMKT_API_KEY`:
 
 ```sh
-export LITELLM_API_KEY="<ключ LiteLLM>"
+export RAG_OPERSMKT_API_KEY="<ключ LiteLLM>"
 ```
 
 Отдельный токен RAG не требуется. Инструменты `rag-code-oper-smkt_*` доступны

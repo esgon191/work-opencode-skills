@@ -22,6 +22,18 @@ def precheck(sql: str) -> None:
             raise DwhError(f"запрос меняет данные ({kw.normalized}), тестировать нельзя")
 
 
+def precheck_export(sql: str) -> None:
+    """Для выгрузки разрешён ровно один SELECT/WITH; read-only остаётся основной защитой."""
+    precheck(sql)
+    statements = [st for st in sqlparse.split(sql) if st.strip()]
+    if len(statements) != 1:
+        raise DwhError("для выгрузки нужен ровно один SELECT-запрос")
+    parsed = sqlparse.parse(statements[0])
+    kw = parsed[0].token_first(skip_cm=True) if parsed else None
+    if not kw or kw.normalized.upper() not in {"SELECT", "WITH"}:
+        raise DwhError("выгружать можно только SELECT-запрос, можно с CTE")
+
+
 def test_query(sql: str, alias: str | None = None, run: bool = False) -> str:
     sql = sql.strip().rstrip(";")
     precheck(sql)
